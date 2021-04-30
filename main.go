@@ -66,16 +66,15 @@ func (o *APIRequestCountOptions) Run() error {
 	// TODO: prepare filters
 
 	ret := map[string]map[string]int64{}
-	fmt.Println(walkData("/Users/lszaszki/go/src/github.com/p0lyn0mial/processor/apirequestcounts", func(counter *apiv1.APIRequestCount) error {
+	fmt.Println(walkData("/Users/lszaszki/go/src/github.com/p0lyn0mial/api-request-count-processor/apirequestcounts", func(counter *apiv1.APIRequestCount) error {
 		resourceRequests := getRequestHistoryForTheLast(0, 0, true, counter.Status)
-		byResourceRet := byResource(counter.Name, resourceRequests)
-		mergeMaps(ret, byResourceRet)
+		mergeMaps(ret, byUser(counter.Name, resourceRequests))
 		return nil
 	}))
 
 	// TODO: serialize to a file
 	//fmt.Println(fmt.Sprintf("%v", ret))
-	serializeToAFile(ret, "/Users/lszaszki/go/src/github.com/p0lyn0mial/processor/ret.json")
+	serializeToAFile(ret, "/Users/lszaszki/go/src/github.com/p0lyn0mial/api-request-count-processor/ret.json")
 	fmt.Println("OK")
 	return nil
 }
@@ -116,17 +115,29 @@ func serializeToAFile(data map[string]map[string]int64, filePath string) error {
 }
 
 // filter
+func byUser(resourceName string, resourceRequests []apiv1.PerResourceAPIRequestLog) map[string]map[string]int64 {
+	ret := map[string]map[string]int64{}
+
+	resUsers := byUserHelper(resourceRequests)
+	for user, counter := range resUsers {
+		ret[user] = map[string]int64 {resourceName:counter}
+	}
+
+	return ret
+}
+
+// filter
 func byResource(resourceName string, resourceRequests []apiv1.PerResourceAPIRequestLog) map[string]map[string]int64 {
 	ret := map[string]map[string]int64{}
 
-	byUserMap := byUser(resourceRequests)
+	byUserMap := byUserHelper(resourceRequests)
 	ret[resourceName] = byUserMap
 
 	return ret
 }
 
 // helper
-func byUser(resourceRequests []apiv1.PerResourceAPIRequestLog) map[string]int64 {
+func byUserHelper(resourceRequests []apiv1.PerResourceAPIRequestLog) map[string]int64 {
 	ret := map[string]int64{}
 
 	for _, resourceRequest := range resourceRequests {
